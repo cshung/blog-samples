@@ -23,23 +23,26 @@
             LongTermObject LongTermObject = new LongTermObject();
             GC.Collect();
             GC.Collect();
-            int counter = 0;
-            for (int iteration = 0; iteration < 10000; iteration++)
+            for (int phase = 0; phase < 2; phase++)
             {
-                ShortTermObject head = new ShortTermObject();
-                for (int i = 0; i < 1000; i++)
+                int counter = 0;
+                for (int iteration = 0; iteration < 10000; iteration++)
                 {
-                    ShortTermObject next = new ShortTermObject();
-                    next.weight = new byte[1000];
-                    next.prev = head;
-                    head = next;
-                }
-                counter++;
-                // Emulate a leak of a ephermal object to LongTermObject.
-                if (counter % 1000 == 0)
-                {
-                    Console.WriteLine("Leaked");
-                    LongTermObject.leak = head;
+                    ShortTermObject head = new ShortTermObject();
+                    for (int i = 0; i < 1000; i++)
+                    {
+                        ShortTermObject next = new ShortTermObject();
+                        next.weight = new byte[1000];
+                        next.prev = head;
+                        head = next;
+                    }
+                    counter++;
+                    // Emulate a leak of a ephermal object to LongTermObject.
+                    if (counter % 1000 == 0)
+                    {
+                        Console.WriteLine("Leaked");
+                        LongTermObject.leak = head;
+                    }
                 }
             }
         }
