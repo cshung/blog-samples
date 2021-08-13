@@ -1,0 +1,132 @@
+﻿using System;
+using System.Diagnostics;
+using System.Threading;
+
+namespace FalseLeakRepro
+{
+    internal class Node
+    {
+        public Node Next;
+        public object Data;
+    }
+
+    internal class RootNode : Node
+    {
+    }
+
+    internal class List
+    {
+        public Node Head, Tail;
+
+        public List()
+        {
+            Head = Tail = new RootNode();
+        }
+    }
+
+    internal class Program
+    {
+        private List _myList;
+        private bool _running = true;
+
+        private static void Main(string[] args)
+        {
+            Program p = new Program();
+            p.Run(args);
+        }
+
+        public void Run(string[] args)
+        {
+            Console.WriteLine(DateTime.Now + "\t Created list");
+
+            // Create the list, head/tail are created for us as an available node with no next.
+            _myList = new List();
+            _myList.Head.Data = new object();
+
+            // Have a background thread doing the work to handle it for us.
+            var consumer = new Thread((x) =>
+            {
+                // processing side would do some things here to process the current 'tail', then move next.
+                while (_running)
+                {
+                    bool didWork = false;
+                    lock (_myList)
+                    {
+                        // we process the current 'tail' once head moves on
+                        if (_myList.Tail != _myList.Head)
+                        {
+                            didWork = true;
+                            // take the data
+                            _myList.Tail.Data = null;
+                            _myList.Tail = _myList.Tail.Next;
+                        }
+                    }
+                    if (!didWork)
+                    {
+                        Thread.Sleep(10);
+                    }
+                }
+            });
+            consumer.Start();
+
+            Console.WriteLine(DateTime.Now + "\t Consumer thread started, adding items...");
+
+            // Do some processing such that we build up the list 
+            for (int i = 0; i < 10; i++)
+            {
+                lock (_myList)
+                {
+                    // now move on to make a new 'next' node
+                    _myList.Head.Next = new Node();
+                    _myList.Head = _myList.Head.Next;
+                    // We also tag this one with a different object 
+                    _myList.Head.Data = new object();
+                }
+            }
+
+            Console.WriteLine(DateTime.Now + "\t Waiting for list processing to complete...");
+
+            // now head/tail are at the end of the list together again. 
+            while (true)
+            {
+                lock (_myList)
+                {
+                    if (_myList.Head == _myList.Tail)
+                    {
+                        break;
+                    }
+                }
+                Thread.Sleep(100);
+            }
+
+            Console.WriteLine(DateTime.Now + "\t Done.  Profiler is active, available options:");
+            Console.WriteLine("   Q = quit");
+            Console.WriteLine("   H = heap snapshot");
+            Console.WriteLine("   G = GC (max gen)");
+            Console.WriteLine("   R = clear the running flag to stop the consumer thread");
+
+            while (true)
+            {
+                var key = Console.ReadKey();
+                if (key.Key == ConsoleKey.G)
+                {
+                    GC.Collect(GC.MaxGeneration);
+                }
+                else if (key.Key == ConsoleKey.H)
+                {
+                    Debugger.Break();
+                }
+                else if (key.Key == ConsoleKey.R)
+                {
+                    _running = false;
+                }
+                else if (key.Key == ConsoleKey.Q)
+                {
+                    break;
+                }
+            }
+
+            _running = false;
+        }
+    }
+}
