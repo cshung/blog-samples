@@ -1,24 +1,27 @@
-﻿namespace GenAwareDemo
-{
-    using System;
-    using System.Diagnostics;
+﻿// Licensed to the .NET Foundation under one or more agreements.
+// The .NET Foundation licenses this file to you under the MIT license.
 
-    class LongTermObject
+using System;
+using System.Diagnostics;
+
+namespace GenAwareDemo
+{
+    internal sealed class LongTermObject
     {
         public ShortTermObject leak;
     }
 
-    class ShortTermObject
+    internal sealed class ShortTermObject
     {
         public ShortTermObject prev;
         public byte[] weight;
     }
 
-    class Program
+    internal sealed class Program
     {
-        static void Main(string[] args)
+        private static void Main()
         {
-            Console.WriteLine("My process id is " + Process.GetCurrentProcess().Id);
+            Console.WriteLine("My process id is " + Environment.ProcessId);
             Console.ReadLine();
             LongTermObject LongTermObject = new LongTermObject();
             GC.Collect();
